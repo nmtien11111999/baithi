@@ -5,9 +5,11 @@ import bt1.casemodule4.model.Promotion;
 import bt1.casemodule4.service.PromotionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -15,80 +17,61 @@ import java.util.List;
 
 @RestController
 @CrossOrigin("*")
-@RequestMapping("/api/promotions")
+@RequestMapping("/promotions")
 public class PromotionController {
+    private final PromotionService promotionService;
 
     @Autowired
-    private PromotionService promotionService;
-
-    @GetMapping("/List")
-    public ResponseEntity<List<Promotion>> showAllPromotion(){
-        return ResponseEntity.ok(promotionService.findAll());
+    public PromotionController(PromotionService promotionService) {
+        this.promotionService = promotionService;
     }
 
-    @PostMapping("/create")
-    public ResponseEntity<?> createPromotion(@Valid @RequestBody Promotion promotion, BindingResult bindingResult){
-        promotionService.save(promotion, bindingResult);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    @GetMapping
+    public ResponseEntity<List<Promotion>> getAll() {
+        return new ResponseEntity<>(promotionService.findAll(), HttpStatus.OK);
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<?> deletePromotion(@PathVariable Long id){
-        promotionService.delete(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping
+    public ResponseEntity<Promotion> create(@Validated @RequestBody Promotion promotion, BindingResult bindingResult) {
+        return new ResponseEntity<>(promotionService.save(promotion, bindingResult), HttpStatus.CREATED);
     }
 
-    // Tìm promotion theo discount
-    @GetMapping("/by-discount")
-    public ResponseEntity<List<Promotion>> findByDiscount(@RequestParam("discount") Double discount) {
-        List<Promotion> promotions = promotionService.findByDiscount(discount);
-        return ResponseEntity.ok(promotions);
+    @PutMapping("/{id}")
+    public ResponseEntity<Promotion> update(@Valid @PathVariable Long id, @Validated @RequestBody Promotion promotion, BindingResult bindingResult) {
+        return new ResponseEntity<>(promotionService.update(promotion, id, bindingResult), HttpStatus.OK);
     }
 
-    // Tìm promotion theo startDate
-    @GetMapping("/by-start-date")
-    public ResponseEntity<List<Promotion>> findByStartDate(@RequestParam("startDate") LocalDate startDate) {
-        List<Promotion> promotions = promotionService.findByStartDate(startDate);
-        return ResponseEntity.ok(promotions);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Promotion> delete(@PathVariable Long id) {
+        return new ResponseEntity<>(promotionService.delete(id), HttpStatus.OK);
     }
 
-    // Tìm promotion theo endDate
-    @GetMapping("/by-end-date")
-    public ResponseEntity<List<Promotion>> findByEndDate(@RequestParam("endDate") LocalDate endDate) {
-        List<Promotion> promotions = promotionService.findByEndDate(endDate);
-        return ResponseEntity.ok(promotions);
+    @GetMapping("/{id}")
+    public ResponseEntity<Promotion> getById(@PathVariable Long id) {
+        return new ResponseEntity<>(promotionService.findById(id).get(),HttpStatus.OK);
     }
 
-    // Tìm promotion theo discount và startDate
-    @GetMapping("/by-discount-and-start-date")
-    public ResponseEntity<List<Promotion>> findByDiscountAndStartDate(@RequestParam("discount") Double discount,
-                                                                      @RequestParam("startDate") LocalDate startDate) {
-        List<Promotion> promotions = promotionService.findByDiscountAndStartDate(discount, startDate);
-        return ResponseEntity.ok(promotions);
-    }
-
-    // Tìm promotion theo startDate và endDate
-    @GetMapping("/by-start-date-and-end-date")
-    public ResponseEntity<List<Promotion>> findByStartDateAndEndDate(@RequestParam("startDate") LocalDate startDate,
-                                                                     @RequestParam("endDate") LocalDate endDate) {
-        List<Promotion> promotions = promotionService.findByStartDateAndEndDate(startDate, endDate);
-        return ResponseEntity.ok(promotions);
-    }
-
-    // Tìm promotion theo discount và endDate
-    @GetMapping("/by-discount-and-end-date")
-    public ResponseEntity<List<Promotion>> findByDiscountAndEndDate(@RequestParam("discount") Double discount,
-                                                                    @RequestParam("endDate") LocalDate endDate) {
-        List<Promotion> promotions = promotionService.findByDiscountAndEndDate(discount, endDate);
-        return ResponseEntity.ok(promotions);
-    }
-
-    // Tìm promotion theo discount, startDate và endDate
-    @GetMapping("/by-discount-and-start-date-and-end-date")
-    public ResponseEntity<List<Promotion>> findByDiscountAndStartDateAndEndDate(@RequestParam("discount") Double discount,
-                                                                                @RequestParam("startDate") LocalDate startDate,
-                                                                                @RequestParam("endDate") LocalDate endDate) {
-        List<Promotion> promotions = promotionService.findByDiscountAndStartDateAndEndDate(discount, startDate, endDate);
-        return ResponseEntity.ok(promotions);
+    @GetMapping("/search")
+    public ResponseEntity<List<Promotion>> searchPromotions(
+            @RequestParam(required = false) Double discount,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)LocalDate endDate) {
+        if (discount != null && startDate != null && endDate != null) {
+            return new ResponseEntity<>(promotionService.findByDiscountAndStartDateAndEndDate(discount, startDate, endDate),HttpStatus.OK);
+        } else if (discount != null && startDate != null) {
+            return new ResponseEntity<>(promotionService.findByDiscountAndStartDate(discount, startDate),HttpStatus.OK);
+        } else if (discount != null && endDate != null) {
+            return new ResponseEntity<>(promotionService.findByDiscountAndEndDate(discount, endDate),HttpStatus.OK);
+        } else if (startDate != null && endDate != null) {
+            return new ResponseEntity<>(promotionService.findByStartDateAndEndDate(startDate, endDate),HttpStatus.OK);
+        } else if (discount != null) {
+            return new ResponseEntity<>(promotionService.findByDiscount(discount),HttpStatus.OK);
+        } else if (startDate != null) {
+            return new ResponseEntity<>(promotionService.findByStartDate(startDate),HttpStatus.OK);
+        } else if (endDate != null) {
+            return new ResponseEntity<>(promotionService.findByEndDate(endDate),HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(promotionService.findAll(),HttpStatus.OK);
+        }
     }
 }
